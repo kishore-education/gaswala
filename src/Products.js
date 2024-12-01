@@ -1,74 +1,79 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
-import { AppBar, Toolbar, IconButton, Typography, Menu, MenuItem, Button, CircularProgress, Card, CardContent, CardMedia, Grid, Container, Snackbar, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, RadioGroup, FormControlLabel, Radio, FormControl, FormLabel } from '@mui/material';
+import { AppBar, Toolbar, IconButton, Typography, Menu, MenuItem, Button, CircularProgress, Card, CardContent, CardMedia, Grid, Container, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, RadioGroup, FormControlLabel, Radio, FormControl, FormLabel, Snackbar } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
+import ShareIcon from '@mui/icons-material/Share';
 import { useLocation, useNavigate } from 'react-router-dom';
 import anime from 'animejs/lib/anime.es.js';
 import './Products.css';
+import 'core-js/stable';
+import 'regenerator-runtime/runtime';
 
 function Products() {
   const [products, setProducts] = useState([]);
   const [cartProducts, setCartProducts] = useState([]);
-  const [loading, setLoading] = useState(true); // Add loading state
+  const [loading, setLoading] = useState(true);
   const [anchorEl, setAnchorEl] = useState(null);
   const [showAllProducts, setShowAllProducts] = useState(false);
   const [showNewConnection, setShowNewConnection] = useState(false);
   const [showAccessories, setShowAccessories] = useState(false);
   const [showCart, setShowCart] = useState(false);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [bookingLoading, setBookingLoading] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const userData = location.state?.userData || JSON.parse(localStorage.getItem('userData'));
 
   const fetchProducts = useCallback(async () => {
-    setLoading(true); // Set loading to true before fetching products
+    setLoading(true);
     try {
-      const response = await axios.get('https://vercel-fastapi-rouge.vercel.app/products');
+      const response = await axios.get('http://127.0.0.1:8000/products', { timeout: 5000 });
       if (showAllProducts) {
         setProducts(response.data);
       } else {
         const selectedProduct = response.data.filter(product => product.name.toLowerCase() === userData.gas_name.toLowerCase());
         setProducts(selectedProduct);
       }
-      setLoading(false); // Set loading to false after products are fetched
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching products:', error);
-      setLoading(false); // Set loading to false even if there's an error
+      setLoading(false);
     }
-  }, [showAllProducts, userData]);
+  }, [showAllProducts, userData.gas_name]);
 
   const fetchNewConnectionProducts = useCallback(async () => {
-    setLoading(true); // Set loading to true before fetching products
+    setLoading(true);
     try {
-      const response = await axios.get('https://vercel-fastapi-rouge.vercel.app/newconnection');
+      const response = await axios.get('http://127.0.0.1:8000/newconnection', { timeout: 5000 });
       setProducts(response.data);
-      setLoading(false); // Set loading to false after products are fetched
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching products:', error);
-      setLoading(false); // Set loading to false even if there's an error
+      setLoading(false);
     }
   }, []);
 
   const fetchAccessoriesProducts = useCallback(async () => {
-    setLoading(true); // Set loading to true before fetching products
+    setLoading(true);
     try {
-      const response = await axios.get('https://vercel-fastapi-rouge.vercel.app/accessories');
+      const response = await axios.get('http://127.0.0.1:8000/accessories', { timeout: 5000 });
       setProducts(response.data);
-      setLoading(false); // Set loading to false after products are fetched
+      setLoading(false);
     } catch (error) {
       console.error('Error fetching products:', error);
-      setLoading(false); // Set loading to false even if there's an error
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     if (!userData) {
-      navigate('/signin'); // Redirect to sign-in if userData is not available
+      navigate('/signin');
     } else {
-      console.log("User data:", userData); // Log the user data
+      console.log("User data:", userData);
       if (showNewConnection) {
         fetchNewConnectionProducts();
       } else if (showAccessories) {
@@ -98,9 +103,10 @@ function Products() {
       gas_name: userData.gas_name,
       alternate_mobile_number: userData.alternate_mobile_number,
       GasTheySelected: selectedProduct.name,
-      booking_datetime: new Date().toLocaleString(), // Capture local date and time
+      booking_datetime: new Date().toLocaleString(),
       geolocation: null,
-      payment_method: paymentMethod
+      payment_method: paymentMethod,
+      price: selectedProduct.price
     };
 
     if (navigator.geolocation) {
@@ -110,10 +116,11 @@ function Products() {
           longitude: position.coords.longitude
         };
         try {
-          console.log("Booking data being sent:", bookingData); // Log the booking data
-          const response = await axios.post('https://vercel-fastapi-rouge.vercel.app/book', bookingData);
-          alert(response.data.message);
-          navigate('/order', { state: { userData } }); // Navigate to order page
+          console.log("Booking data being sent:", bookingData);
+          await axios.post('http://127.0.0.1:8000/book', bookingData, { timeout: 5000 });
+          setSnackbarMessage('Booking created successfully!');
+          setSnackbarOpen(true);
+          navigate('/order', { state: { userData } });
         } catch (error) {
           console.error('Error creating booking:', error);
           alert('Error creating booking');
@@ -138,7 +145,8 @@ function Products() {
     localStorage.setItem('cart', JSON.stringify(updatedCart));
     setCartProducts(updatedCart);
     console.log("Product added to cart:", product);
-    setSnackbarOpen(true); // Show success message
+    setSnackbarMessage('Product added to cart successfully!');
+    setSnackbarOpen(true);
   };
 
   const handleRemoveFromCart = (productId) => {
@@ -173,7 +181,7 @@ function Products() {
     setShowAccessories(false);
     setShowAllProducts(false);
     setShowCart(false);
-    fetchNewConnectionProducts(); // Call the function to fetch new connection products
+    fetchNewConnectionProducts();
     handleMenuClose();
   };
 
@@ -189,7 +197,7 @@ function Products() {
     setShowNewConnection(false);
     setShowAccessories(false);
     setShowCart(false);
-    fetchProducts(); // Call the function to fetch user's gas products
+    fetchProducts();
   };
 
   const handleShowCart = () => {
@@ -200,8 +208,64 @@ function Products() {
   };
 
   const handleBookAll = async () => {
-    for (const product of cartProducts) {
-      await handleBooking(product);
+    setBookingLoading(true);
+    let allBooked = true;
+    const promises = cartProducts.map((product) => {
+      const bookingData = {
+        username: userData.username,
+        name: userData.name,
+        mobile_number: userData.mobile_number,
+        address: userData.address,
+        gas_name: userData.gas_name,
+        alternate_mobile_number: userData.alternate_mobile_number,
+        GasTheySelected: product.name,
+        booking_datetime: new Date().toLocaleString(),
+        geolocation: null,
+        payment_method: paymentMethod,
+        price: product.price
+      };
+
+      return new Promise((resolve, reject) => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(async (position) => {
+            bookingData.geolocation = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude
+            };
+            try {
+              console.log("Booking data being sent:", bookingData);
+              await axios.post('http://127.0.0.1:8000/book', bookingData, { timeout: 5000 });
+              resolve();
+            } catch (error) {
+              console.error('Error creating booking:', error);
+              allBooked = false;
+              reject(error);
+            }
+          }, (error) => {
+            console.error('Error getting geolocation:', error);
+            allBooked = false;
+            reject(error);
+          });
+        } else {
+          alert('Geolocation is not supported by this browser.');
+          allBooked = false;
+          reject(new Error('Geolocation not supported'));
+        }
+      });
+    });
+
+    await Promise.all(promises);
+
+    setBookingLoading(false);
+
+    if (allBooked) {
+      setSnackbarMessage('All products booked successfully!');
+      setSnackbarOpen(true);
+      setCartProducts([]);
+      localStorage.removeItem('cart');
+      navigate('/order', { state: { userData } });
+    } else {
+      alert('Error booking some products.');
     }
   };
 
@@ -209,9 +273,22 @@ function Products() {
     setSnackbarOpen(false);
   };
 
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: 'Gas Wala',
+        text: 'Free Gas Delivery',
+        url: 'https://gas-blush-eta.vercel.app/'
+      }).then(() => {
+        console.log('Thanks for sharing!');
+      }).catch(console.error);
+    } else {
+      alert('Share not supported on this browser, copy this link: https://gas-blush-eta.vercel.app/ - Free Gas Delivery');
+    }
+  };
+
   useEffect(() => {
     const buttons = document.querySelectorAll('.bottom-navbar button:not(.float)');
-    // Remove the unused container variable
     let y = 0;
     let moveY = 0;
     let open = false;
@@ -278,7 +355,7 @@ function Products() {
   }, []);
 
   if (!userData) {
-    return null; // Render nothing if userData is not available
+    return null;
   }
 
   return (
@@ -291,6 +368,9 @@ function Products() {
           <Typography variant="h6" style={{ flexGrow: 1 }}>
             GAS WALA
           </Typography>
+          <IconButton edge="end" color="inherit" aria-label="share" onClick={handleShare}>
+            <ShareIcon />
+          </IconButton>
         </Toolbar>
       </AppBar>
       <Menu
@@ -334,7 +414,7 @@ function Products() {
                           ₹{product.price}
                         </Typography>
                         <Button variant="contained" color="secondary" onClick={() => handleRemoveFromCart(product.id)}>
-                          Remove
+                          Remove / हटाएं
                         </Button>
                       </CardContent>
                     </Card>
@@ -342,12 +422,12 @@ function Products() {
                 ))}
               </Grid>
               <Button variant="contained" color="primary" onClick={handleBookAll} style={{ marginTop: '20px' }}>
-                Book All
+                {bookingLoading ? <CircularProgress size={24} /> : 'Book All / सभी बुक करें'}
               </Button>
             </>
           )}
           <Button variant="contained" color="primary" onClick={() => setShowCart(false)} style={{ marginTop: '20px' }}>
-            Back to Products
+            Back to Products / उत्पादों पर वापस जाएं
           </Button>
         </Container>
       ) : (
@@ -362,22 +442,16 @@ function Products() {
               <div className="price">₹{product.price}</div>
               <div className="button-group" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <Button variant="contained" className="booking-button" onClick={() => handleBooking(product)} style={{ fontSize: '0.875rem', padding: '8px 16px', width: '100%', maxWidth: '300px', margin: '10px 0' }}>
-                  Book Now
+                  Book Now / बुक करें
                 </Button>
                 <Button variant="contained" className="booking-button" onClick={() => handleAddToCart(product)} style={{ fontSize: '0.875rem', padding: '8px 16px', width: '100%', maxWidth: '300px', margin: '10px 0' }}>
-                  Add to Cart
+                  Add to Cart / कार्ट में डालें
                 </Button>
               </div>
             </div>
           ))}
         </>
       )}
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={3000}
-        onClose={handleSnackbarClose}
-        message="Product added to cart successfully!"
-      />
       <Dialog open={dialogOpen} onClose={handleDialogClose}>
         <DialogTitle>Select Payment Method</DialogTitle>
         <DialogContent>
@@ -393,27 +467,45 @@ function Products() {
               onChange={(e) => setPaymentMethod(e.target.value)}
             >
               <FormControlLabel value="Cash" control={<Radio />} label="Cash" />
-              <FormControlLabel value="PhonePe" control={<Radio />} label="PhonePe" />
-              <FormControlLabel value="Card" control={<Radio />} label="Card" />
+              <FormControlLabel value="UPI" control={<Radio />} label="UPI (PhonePe, GPay, Paytm)" />
+              <FormControlLabel value="Card" control={<Radio />} label="Card (Visa, Master, Rupay)" />
             </RadioGroup>
           </FormControl>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleDialogClose} color="secondary" variant="outlined">
-            Cancel
+            Cancel / रद्द करें
           </Button>
           <Button onClick={handleConfirmBooking} color="primary" variant="contained">
-            Confirm
+            Confirm / पुष्टि करें
           </Button>
         </DialogActions>
       </Dialog>
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={handleSnackbarClose}
+        message={snackbarMessage}
+      />
       <div className="button-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <button className="modern-button fancy-button" onClick={handleNavigateToAccessories}>Accessories</button>
-        <button className="modern-button fancy-button" onClick={handleNavigateToNewconnection}>New Connection</button>
-        <button className="modern-button fancy-button" onClick={handleShowAllProducts}>Show All Products</button>
-        <button className="modern-button fancy-button" onClick={handleShowMyGas}>My Gas</button>
-        <button className="modern-button fancy-button" onClick={handleShowCart}>Show Cart</button>
-        <button className="modern-button fancy-button" onClick={handleNavigateToOrders}>Orders</button>
+        <button className="modern-button fancy-button" onClick={handleNavigateToAccessories}>
+          Accessories / सहायक उपकरण
+        </button>
+        <button className="modern-button fancy-button" onClick={handleNavigateToNewconnection}>
+          New Connection / नया कनेक्शन
+        </button>
+        <button className="modern-button fancy-button" onClick={handleShowAllProducts}>
+          Show All Products / सभी उत्पाद दिखाएं
+        </button>
+        <button className="modern-button fancy-button" onClick={handleShowMyGas}>
+          My Gas / मेरी गैस
+        </button>
+        <button className="modern-button fancy-button" onClick={handleShowCart}>
+          Show Cart / कार्ट दिखाएं
+        </button>
+        <button className="modern-button fancy-button" onClick={handleNavigateToOrders}>
+          Orders / आदेश
+        </button>
       </div>
       <footer className="footer">
         <p>POWERED BY KISHORE STORES <a href="tel:9894073441">MOBILE NUMBER: 9894073441</a></p>

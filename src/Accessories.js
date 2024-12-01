@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import axios from 'axios';
 import { AppBar, Toolbar, IconButton, Typography, Menu, MenuItem, Button, CircularProgress } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -14,7 +14,7 @@ function Accessories() {
   const navigate = useNavigate();
   const userData = location.state?.userData || JSON.parse(localStorage.getItem('userData'));
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     setLoading(true); // Set loading to true before fetching products
     try {
       const response = await axios.get('https://vercel-fastapi-rouge.vercel.app/accessories');
@@ -24,7 +24,7 @@ function Accessories() {
       console.error('Error fetching products:', error);
       setLoading(false); // Set loading to false even if there's an error
     }
-  };
+  }, []); // Add an empty dependency array to useCallback
 
   useEffect(() => {
     if (!userData) {
